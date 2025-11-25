@@ -3,7 +3,13 @@ import { createContext, useContext, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { register as registerAPI, login as loginAPI, getProfile } from '@/services/authService';
 
-const AuthContext = createContext({});
+const AuthContext = createContext({
+    user: null,
+    loading: true,
+    register: async () => ({ success: false }),
+    login: async () => ({ success: false }),
+    logout: () => { },
+});
 
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
@@ -13,14 +19,16 @@ export const AuthProvider = ({ children }) => {
     // Verificar token al montar
     useEffect(() => {
         const checkAuth = async () => {
-            const token = localStorage.getItem('access_token');
+            const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
             if (token) {
                 try {
                     const userData = await getProfile();
                     setUser(userData);
                 } catch (error) {
-                    localStorage.removeItem('access_token');
-                    localStorage.removeItem('refresh_token');
+                    if (typeof window !== 'undefined') {
+                        localStorage.removeItem('access_token');
+                        localStorage.removeItem('refresh_token');
+                    }
                 }
             }
             setLoading(false);
@@ -31,8 +39,10 @@ export const AuthProvider = ({ children }) => {
     const register = async (data) => {
         try {
             const response = await registerAPI(data);
-            localStorage.setItem('access_token', response.tokens.access);
-            localStorage.setItem('refresh_token', response.tokens.refresh);
+            if (typeof window !== 'undefined') {
+                localStorage.setItem('access_token', response.tokens.access);
+                localStorage.setItem('refresh_token', response.tokens.refresh);
+            }
             setUser(response.user);
             router.push('/elections');
             return { success: true };
@@ -44,8 +54,10 @@ export const AuthProvider = ({ children }) => {
     const login = async (email, password) => {
         try {
             const response = await loginAPI(email, password);
-            localStorage.setItem('access_token', response.tokens.access);
-            localStorage.setItem('refresh_token', response.tokens.refresh);
+            if (typeof window !== 'undefined') {
+                localStorage.setItem('access_token', response.tokens.access);
+                localStorage.setItem('refresh_token', response.tokens.refresh);
+            }
             setUser(response.user);
             router.push('/elections');
             return { success: true };
@@ -55,8 +67,10 @@ export const AuthProvider = ({ children }) => {
     };
 
     const logout = () => {
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('refresh_token');
+        if (typeof window !== 'undefined') {
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('refresh_token');
+        }
         setUser(null);
         router.push('/');
     };
